@@ -1,0 +1,237 @@
+package software1;
+
+import javafx.event.ActionEvent;
+import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.fxml.Initializable;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.stage.Stage;
+import java.io.IOException;
+import java.net.URL;
+import java.util.Optional;
+import java.util.ResourceBundle;
+
+/**
+ * ModifyProductFormController class
+ * @author Logan
+ */
+public class ModifyProductFormController implements Initializable {
+
+    /**
+     * Table and table columns for parts that are available to be associated with the current product (availableParts)
+     * and for parts that have been associated with the current product (associatedParts).
+     * Required text field inputs to gather data.
+     */
+    @FXML private TableView<Part> availableParts;
+    @FXML private TableColumn<Part, Integer> availPartId;
+    @FXML private TableColumn<Part, String> availPartName;
+    @FXML private TableColumn<Part, Integer> availPartInv;
+    @FXML private TableColumn<Part, Double> availPartPrice;
+    @FXML private TableView<Part> associatedParts;
+    @FXML private TableColumn<Part, Integer> assocPartId;
+    @FXML private TableColumn<Part, String> assocPartName;
+    @FXML private TableColumn<Part, Integer> assocPartInv;
+    @FXML private TableColumn<Part, Double> assocPartPrice;
+    @FXML private TextField productId;
+    @FXML private TextField productName;
+    @FXML private TextField productInv;
+    @FXML private TextField productPrice;
+    @FXML private TextField productMax;
+    @FXML private TextField productMin;
+    @FXML private TextField searchParts;
+    private Product selectedProduct;
+
+
+    /**
+     * Attempts to search parts by part ID or part name. If user entered an integer, the part with the
+     * matching part ID will be selected in the table. If user entered a string, lookupPart is called
+     * and all parts with names that contain that string will be shown.
+     */
+    public void searchPartsAction() {
+        try {
+            int searchPart = Integer.parseInt(searchParts.getText());
+            availableParts.getSelectionModel().clearSelection();
+            availableParts.getSelectionModel().select(Inventory.lookupPart(searchPart));
+        } catch (NumberFormatException e) {
+            String searchPart = searchParts.getText();
+            availableParts.setItems(Inventory.lookupPart(searchPart));
+        }
+    }
+
+    /**
+     * Passes selected product data to be pre-loaded on view. Loads associated parts
+     * table with previously associated parts.
+     * @param product the product to be edited.
+     */
+    public void initData(Product product) {
+        selectedProduct = product;
+
+        productId.setText(Integer.toString(selectedProduct.getId()));
+        productName.setText(selectedProduct.getName());
+        productInv.setText(Integer.toString(selectedProduct.getStock()));
+        productPrice.setText(Double.toString(selectedProduct.getPrice()));
+        productMax.setText(Integer.toString(selectedProduct.getMax()));
+        productMin.setText(Integer.toString(selectedProduct.getMin()));
+
+        associatedParts.setItems(selectedProduct.getAllAssociatedParts());
+    }
+
+    /**
+     * On add button click, selected part is copied from available parts table to associated parts table
+     * in GUI and is associated with that product.
+     */
+    public void addButtonPushed() {
+        Part selectedPart = availableParts.getSelectionModel().getSelectedItem();
+        if (selectedPart == null) {
+            return;
+        }
+        selectedProduct.addAssociatedPart(selectedPart);
+        associatedParts.setItems(selectedProduct.getAllAssociatedParts());
+    }
+
+    /**
+     * On remove button click, alert will display asking to confirm removal. If confirmed, part is removed
+     * from the list.
+     */
+    public void removePartButtonPushed() {
+        Part selectedPart = associatedParts.getSelectionModel().getSelectedItem();
+        if (selectedPart == null) {
+            return;
+        }
+        Alert alert = new Alert(Alert.AlertType.CONFIRMATION, "Are you sure you want to remove this part?");
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.isPresent() && result.get() == ButtonType.OK) {
+            if (!selectedProduct.deleteAssociatedPart(selectedPart)) {
+                Alert alert1 = new Alert(Alert.AlertType.ERROR, "The part was not removed. Try again.");
+                alert1.showAndWait();
+            }
+        }
+    }
+
+    /**
+     * On save button click, verifies correct data types and logical functionality.
+     * First, checks if any field is empty. If so, an alert is displayed.
+     * Second, checks if values are appropriate for each input and formats the price
+     * into a double with two trailing digits (i.e. 2.34). If values are not correct,
+     * catches exception and displays alert.
+     * Third, checks that price is greater than 0.00 and that Min is less than Max
+     * and Inv is between them.
+     * Fourth, saves the product information from text fields and loads the main form.
+     * @param actionEvent for changing to next scene upon button click.
+     * @throws IOException for failed or interrupted I/O operations.
+     */
+    public void saveButtonPushed(ActionEvent actionEvent) throws IOException {
+        try {
+            Alert alert = new Alert(Alert.AlertType.ERROR);
+
+            //check if fields are empty
+            if (productName.getText().isEmpty()) {
+                alert.setContentText("Name should have a value.");
+                alert.showAndWait();
+                return;
+            } else if (productInv.getText().isEmpty()) {
+                alert.setContentText("Inv should have a value.");
+                alert.showAndWait();
+                return;
+            } else if (productPrice.getText().isEmpty()) {
+                alert.setContentText("Price should have a value");
+                alert.showAndWait();
+                return;
+            } else if (productMax.getText().isEmpty()) {
+                alert.setContentText("Max should have a value");
+                alert.showAndWait();
+                return;
+            } else if (productMin.getText().isEmpty()) {
+                alert.setContentText("Min should have a value");
+                alert.showAndWait();
+                return;
+            } else { //check if values are appropriate or catch exception
+                productPrice.setText(String.format("%,.2f", Double.parseDouble(productPrice.getText())));
+                Integer.parseInt(productInv.getText());
+                Integer.parseInt(productMax.getText());
+                Integer.parseInt(productMin.getText());
+            }
+
+            //check if logic is correct
+            if (Double.parseDouble(productPrice.getText()) <= 0.00) {
+                alert.setContentText("Price should be greater than $0.00");
+                alert.showAndWait();
+            } else if (Integer.parseInt(productMin.getText()) >= Integer.parseInt(productMax.getText())) {
+                alert.setContentText("Min should be less than Max");
+                alert.showAndWait();
+            } else if (Integer.parseInt(productInv.getText()) < Integer.parseInt(productMin.getText())
+                    || Integer.parseInt(productInv.getText()) > Integer.parseInt(productMax.getText())) {
+                alert.setContentText("Inv should be between Min and Max");
+                alert.showAndWait();
+            } else {
+                int index = Inventory.getAllProducts().indexOf(selectedProduct);
+                selectedProduct.setId(Integer.parseInt(productId.getText()));
+                selectedProduct.setName(productName.getText());
+                selectedProduct.setPrice(Double.parseDouble(productPrice.getText()));
+                selectedProduct.setStock(Integer.parseInt(productInv.getText()));
+                selectedProduct.setMin(Integer.parseInt(productMin.getText()));
+                selectedProduct.setMax(Integer.parseInt(productMax.getText()));
+
+                Inventory.updateProduct(index, selectedProduct);
+
+                //go to main form
+                Stage stage = (Stage) ((Button) actionEvent.getSource()).getScene().getWindow();
+                Parent scene = FXMLLoader.load(getClass().getResource("MainForm.fxml"));
+                stage.setScene(new Scene(scene));
+                stage.show();
+            }
+        } catch (NumberFormatException e) {
+            Alert alert = new Alert(Alert.AlertType.ERROR, "Enter integers for Inv, Max, Machine ID, and Max: 3 \n" +
+                    "Enter decimal number for Price: $1.23");
+            alert.showAndWait();
+        }
+    }
+
+    /**
+     * On cancel button click, data in text fields are cleared and next scene is loaded.
+     * @param actionEvent for changing to next scene upon button click.
+     * @throws IOException for failed or interrupted I/O operations.
+     */
+    public void cancelButtonPushed(ActionEvent actionEvent) throws IOException {
+        //clears screen
+        productId.clear();
+        productName.clear();
+        productInv.clear();
+        productPrice.clear();
+        productMax.clear();
+        productMin.clear();
+
+        //loads main form again
+        Stage stage = (Stage)((Button)actionEvent.getSource()).getScene().getWindow();
+        Parent scene = FXMLLoader.load(getClass().getResource("MainForm.fxml"));
+        stage.setScene(new Scene(scene));
+        stage.show();
+    }
+
+    /**
+     * On load, links table and table columns to display all parts. ALso links table and table columns for
+     * associated parts.
+     * @param url The location used to resolve relative paths for the root object, or null if the location
+     *            is not known.
+     * @param resourceBundle The resources used to localize the root object, or null if the root object was
+     *                       not localized.
+     */
+    @Override
+    public void initialize(URL url, ResourceBundle resourceBundle) {
+        //init all parts in top table
+        availPartId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        availPartName.setCellValueFactory(new PropertyValueFactory<>("name"));
+        availPartInv.setCellValueFactory(new PropertyValueFactory<>("stock"));
+        availPartPrice.setCellValueFactory(new PropertyValueFactory<>("price"));
+        availableParts.setItems(Inventory.getAllParts());
+
+        //init all associated parts from selected product in main form
+        assocPartId.setCellValueFactory(new PropertyValueFactory<>("id"));
+        assocPartName.setCellValueFactory(new PropertyValueFactory<>("name"));
+        assocPartInv.setCellValueFactory(new PropertyValueFactory<>("stock"));
+        assocPartPrice.setCellValueFactory(new PropertyValueFactory<>("price"));
+    }
+}
