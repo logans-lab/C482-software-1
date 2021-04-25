@@ -1,7 +1,7 @@
 # C482-software-1
 WGU C482 Software 1 application.
 
-Build in Java (JDK 11) and JavaFX using IntelliJ IDEA and SceneBuilder. Completed in November, 2020.
+Built in Java (JDK 11) and JavaFX using IntelliJ IDEA and SceneBuilder. Completed in November, 2020.
 
 Given the Part.java class to begin, build a working GUI application according to specifications listed below:
 
